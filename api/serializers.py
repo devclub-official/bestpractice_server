@@ -36,9 +36,6 @@ class GeneratedConfigSerializer(serializers.ModelSerializer):
     def get_content(self, obj):
         """
         content 필드를 파일 형식에 맞게 파싱
-        - JSON: JSON 객체로 파싱
-        - YAML: Python 객체로 파싱
-        - 기타: 원본 문자열 그대로 반환
         """
         if not obj.content:
             return {}
@@ -48,73 +45,126 @@ class GeneratedConfigSerializer(serializers.ModelSerializer):
         print(f"File format: {file_format}")
         
         try:
+            # 먼저 content가 JSON 문자열인지 확인 (text_content 필드를 포함하는 경우)
+            content_to_parse = obj.content
+            try:
+                # content가 JSON 문자열인 경우 파싱
+                content_json = json.loads(obj.content)
+                if isinstance(content_json, dict) and 'text_content' in content_json:
+                    # 실제 콘텐츠는 text_content 필드에 있음
+                    content_to_parse = content_json['text_content']
+            except (json.JSONDecodeError, TypeError):
+                # JSON이 아니면 원본 그대로 사용
+                pass
+                
             # YAML 파일 형식인 경우
             if file_format in ['yaml', 'yml']:
                 try:
-                    # YAML 파싱 시도
-                    return yaml.safe_load(obj.content)
+                    # 접두어 'yaml' 제거
+                    if content_to_parse.startswith("yaml\n"):
+                        content_to_parse = content_to_parse[5:]
+                    
+                    # YAML 직접 수정하는 대신 안전한 접근법: 수동으로 구성된 YAML 문자열 생성
+                    formatted_yaml = self.manually_format_yaml(content_to_parse)
+                    
+                    # 디버깅 출력
+                    print("원본 YAML 내용:")
+                    print(content_to_parse[:200] + "..." if len(content_to_parse) > 200 else content_to_parse)
+                    print("\n수정된 YAML 내용:")
+                    print(formatted_yaml[:200] + "..." if len(formatted_yaml) > 200 else formatted_yaml)
+                    
+                    # YAML에서는 파싱이 항상 어려우므로 직접 문자열 형태로 반환
+                    return {"text_content": formatted_yaml}
+                    
                 except Exception as e:
-                    return {"error": f"YAML 파싱 오류: {str(e)}", "raw": obj.content}
+                    print(f"YAML 처리 오류: {str(e)}")
+                    # 오류 발생 시 원본 텍스트 반환
+                    return {"text_content": content_to_parse, "error": str(e)}
             
             # JSON 파일 형식인 경우
             elif file_format == 'json':
                 try:
-                    # 직접 JSON 파싱 시도
-                    return json.loads(obj.content)
+                    return json.loads(content_to_parse)
                 except json.JSONDecodeError:
-                    # 작은따옴표를 큰따옴표로 변환하여 다시 시도
                     try:
-                        content_str = obj.content.replace("'", "\"")
+                        content_str = content_to_parse.replace("'", "\"")
                         return json.loads(content_str)
                     except json.JSONDecodeError:
-                        # ast.literal_eval 시도
                         try:
-                            return ast.literal_eval(obj.content)
+                            return ast.literal_eval(content_to_parse)
                         except (ValueError, SyntaxError):
-                            return {"error": "JSON 파싱 실패", "raw": obj.content}
+                            return {"text_content": content_to_parse, "error": "JSON 파싱 실패"}
             
-            # JavaScript 설정 파일인 경우 (module.exports = {...})
-            elif file_format in ['js', 'javascript']:
-                # module.exports = {...} 형식에서 {...} 부분만 추출 시도
-                if 'module.exports' in obj.content:
-                    try:
-                        json_part = obj.content.split('module.exports =')[1].split(';')[0].strip()
-                        # 추출된 JSON 파트 파싱 시도
-                        try:
-                            return json.loads(json_part)
-                        except json.JSONDecodeError:
-                            # 작은따옴표를 큰따옴표로 변환
-                            json_part = json_part.replace("'", "\"")
-                            return json.loads(json_part)
-                    except (IndexError, json.JSONDecodeError):
-                        pass
-                
-                # 추출 실패시 원본 반환
-                return {"content": obj.content, "format": "javascript"}
-            
-            # Python 설정 파일인 경우
-            elif file_format in ['py', 'python']:
-                # CONFIG = {...} 형식에서 {...} 부분만 추출 시도
-                if 'CONFIG =' in obj.content:
-                    try:
-                        # Python 딕셔너리 파트 추출
-                        py_dict_part = obj.content.split('CONFIG =')[1].strip()
-                        # ast를 사용하여 안전하게 평가
-                        return ast.literal_eval(py_dict_part)
-                    except (IndexError, ValueError, SyntaxError):
-                        pass
-                
-                # 추출 실패시 원본 반환
-                return {"content": obj.content, "format": "python"}
-            
-            # 기타 텍스트 기반 형식 (properties, env 등)
+            # 기타 형식
             else:
-                # 원본 텍스트 그대로 반환
-                return {"content": obj.content, "format": file_format}
+                return {"text_content": content_to_parse, "format": file_format}
                 
         except Exception as e:
-            # 모든 파싱 실패시 에러 정보와 원본 반환
-            return {"error": str(e), "raw": obj.content}
+            return {"error": str(e), "text_content": obj.content}
+    
+    def manually_format_yaml(self, yaml_text):
+        """
+        YAML 파싱 대신 텍스트 처리로 들여쓰기와 콜론 처리
+        """
+        lines = yaml_text.split('\n')
+        result = []
+        structure = {}  # 키: 깊이
+        current_path = []
+        
+        # 라인별 처리
+        for i, line in enumerate(lines):
+            stripped = line.strip()
+            
+            # 빈 줄이나 주석은 그대로 유지
+            if not stripped or stripped.startswith('#'):
+                result.append(stripped)
+                continue
+            
+            # 키:값 패턴 처리
+            if ':' in stripped:
+                # 키와 값 분리
+                key_parts = stripped.split(':', 1)
+                key = key_parts[0].strip()
+                value = key_parts[1].strip() if len(key_parts) > 1 else ""
+                
+                # 이전 라인 확인하여 계층 구조 파악
+                if i > 0 and not lines[i-1].strip().startswith('#') and ':' in lines[i-1].strip():
+                    prev_key_parts = lines[i-1].strip().split(':', 1)
+                    prev_key = prev_key_parts[0].strip()
+                    prev_value = prev_key_parts[1].strip() if len(prev_key_parts) > 1 else ""
+                    
+                    # 이전 키가 값이 없으면 새 섹션 시작
+                    if not prev_value and prev_key not in structure:
+                        current_path.append(prev_key)
+                        structure[prev_key] = len(current_path) - 1
+                
+                # 현재 키의 깊이 결정
+                if not current_path:
+                    depth = 0
+                else:
+                    # 현재 키가 이미 구조에 있으면 해당 깊이 사용
+                    if key in structure:
+                        depth = structure[key]
+                    else:
+                        # 아니면 현재 경로 길이 기반 깊이 설정
+                        depth = len(current_path)
+                        structure[key] = depth
+                
+                # 값에 콜론이 있으면 따옴표로 감싸기
+                if value and ':' in value and not (value.startswith('"') and value.endswith('"')):
+                    value = f'"{value}"'
+                
+                # 들여쓰기 적용
+                indent = '  ' * depth
+                if value:
+                    result.append(f"{indent}{key}: {value}")
+                else:
+                    result.append(f"{indent}{key}:")
+            else:
+                # 콜론이 없는 라인 (거의 없음)
+                result.append(stripped)
+        
+        return '\n'.join(result)
     
     # def get_selected_options(self, obj):
     #     """features 필드를, 만약 문자열로 저장되어 있다면 리스트로 변환"""

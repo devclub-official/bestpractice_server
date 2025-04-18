@@ -213,6 +213,8 @@ class AIService:
             # PyYAML 라이브러리를 사용하여 변환
             # default_flow_style=False: 블록 스타일로 출력 (가독성 향상)
             # sort_keys=False: 키 순서 유지
+            print(yaml.dump(data, default_flow_style=False, sort_keys=False))
+
             return yaml.dump(data, default_flow_style=False, sort_keys=False)
         except Exception as e:
             print(f"YAML 변환 오류: {e}")
