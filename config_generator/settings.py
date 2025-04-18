@@ -28,8 +28,6 @@ SECRET_KEY = 'django-insecure-r*!j@ydb=5&@(3es=o^omkv8yammjh2e@#)g3543#=md#)cw7y
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["*"]  # 모든 호스트 허용 (개발 환경에서만 사용)
-
 # load .env
 load_dotenv()
 
@@ -93,18 +91,21 @@ DATABASES = {
     }
 }
 
+ALLOWED_HOSTS = ["*"]  # 모든 호스트 허용 (개발 환경에서만 사용)
+
 # CORS 설정
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # React 개발 서버
+    "http://localhost:5173",  # React 개발 서버
 ]
+
+CORS_ALLOW_ALL_ORIGINS = True
+
+CORS_ALLOW_CREDENTIALS = True
 
 # AI API 설정
 AI_API_KEY = os.environ.get('AI_API_KEY')
-print(AI_API_KEY)
 AI_API_URL = os.environ.get('AI_API_URL')
-print(AI_API_URL)
 AI_MODEL = os.environ.get('AI_MODEL')
-print(AI_MODEL)
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators

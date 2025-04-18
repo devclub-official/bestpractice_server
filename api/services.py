@@ -60,11 +60,11 @@ class AIService:
                     "type": "text"
                 }
             },
-            "reasoning": {
-                "effort": "medium"
-            },
+            "temperature": 1,
+            "max_output_tokens": 1000,
             "tools": [],
-            "store": True,
+            "top_p": 1,
+            "store": False,
         }
         
         response = requests.post(settings.AI_API_URL, headers=headers, json=payload)
