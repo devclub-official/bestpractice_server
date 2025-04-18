@@ -20,37 +20,37 @@ class ConfigGeneratorView(APIView):
         prompt_service = PromptGeneratorService()
         ai_service = AIService()
         
-        try:
-            # 프롬프트 생성
-            prompt = prompt_service.generate_prompt(serializer.validated_data)
+        # try:
+        # 프롬프트 생성
+        prompt = prompt_service.generate_prompt(serializer.validated_data)
+        
+        # AI API 호출
+        generated_content = ai_service.generate_content(prompt)
+        
+        # 생성된 설정 파일 저장
+        config = GeneratedConfig.objects.create(
+            language=serializer.validated_data['language'],
+            framework=serializer.validated_data['framework'],
+            features=serializer.validated_data['features'],
+            file_format=serializer.validated_data['file_format'],
+            content=generated_content
+        )
+        
+        # 파일명 및 MIME 타입 생성
+        filename = self._generate_filename(serializer.validated_data)
+        mime_type = self._generate_mime_type(serializer.validated_data['file_format'])
+        
+        return Response({
+            'content': generated_content,
+            'filename': filename,
+            'mime_type': mime_type
+        }, status=status.HTTP_200_OK)
             
-            # AI API 호출
-            generated_content = ai_service.generate_content(prompt)
-            
-            # 생성된 설정 파일 저장
-            config = GeneratedConfig.objects.create(
-                language=serializer.validated_data['language'],
-                framework=serializer.validated_data['framework'],
-                features=serializer.validated_data['features'],
-                file_format=serializer.validated_data['file_format'],
-                content=generated_content
-            )
-            
-            # 파일명 및 MIME 타입 생성
-            filename = self._generate_filename(serializer.validated_data)
-            mime_type = self._generate_mime_type(serializer.validated_data['file_format'])
-            
-            return Response({
-                'content': generated_content,
-                'filename': filename,
-                'mime_type': mime_type
-            }, status=status.HTTP_200_OK)
-            
-        except Exception as e:
-            return Response(
-                {'error': f'설정 파일 생성 중 오류가 발생했습니다: {str(e)}'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+        # except Exception as e:
+        #     return Response(
+        #         {'error': f'설정 파일 생성 중 오류가 발생했습니다: {str(e)}'},
+        #         status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        #     )
     
     def _generate_filename(self, data):
         """요청 데이터에 따른 파일명 생성"""

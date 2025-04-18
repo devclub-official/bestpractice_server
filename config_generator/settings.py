@@ -10,7 +10,10 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
+
 from pathlib import Path
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -25,8 +28,10 @@ SECRET_KEY = 'django-insecure-r*!j@ydb=5&@(3es=o^omkv8yammjh2e@#)g3543#=md#)cw7y
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]  # 모든 호스트 허용 (개발 환경에서만 사용)
 
+# load .env
+load_dotenv()
 
 # Application definition
 
@@ -94,9 +99,12 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 # AI API 설정
-AI_API_KEY = os.environ.get('AI_API_KEY', '')
-AI_API_URL = os.environ.get('AI_API_URL', '')
-AI_MODEL = os.environ.get('AI_MODEL', 'gpt-4')
+AI_API_KEY = os.environ.get('AI_API_KEY')
+print(AI_API_KEY)
+AI_API_URL = os.environ.get('AI_API_URL')
+print(AI_API_URL)
+AI_MODEL = os.environ.get('AI_MODEL')
+print(AI_MODEL)
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators

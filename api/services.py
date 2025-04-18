@@ -44,17 +44,36 @@ class AIService:
         
         payload = {
             "model": settings.AI_MODEL,
-            "messages": [
-                {"role": "system", "content": "You are a helpful assistant that generates configuration files for beginner developers."},
-                {"role": "user", "content": prompt}
+            "input": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                        "type": "input_text",
+                        "text": prompt
+                        }
+                    ]
+                },
             ],
-            "max_tokens": 2000
+            "text": {
+                "format": {
+                    "type": "text"
+                }
+            },
+            "reasoning": {
+                "effort": "medium"
+            },
+            "tools": [],
+            "store": True,
         }
         
         response = requests.post(settings.AI_API_URL, headers=headers, json=payload)
+
+        print(response.json())  # 디버깅을 위한 응답 출력
         
         if response.status_code != 200:
             raise Exception(f"API 호출 실패: {response.text}")
         
         response_data = response.json()
-        return response_data['choices'][0]['message']['content']
+        return response_data
+        # return response_data['output'][0]['content'][0]['text']
