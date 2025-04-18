@@ -1,5 +1,8 @@
 from django.shortcuts import render
 
+import json
+import ast
+
 # Create your views here.
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -26,26 +29,40 @@ class ConfigGeneratorView(APIView):
         # 프롬프트 생성
         prompt = prompt_service.generate_prompt(serializer.validated_data)
         
-        # AI API 호출
-        generated_content = ai_service.generate_content(prompt)
-        
+        # 파일명 및 MIME 타입 생성
+        filename = self._generate_filename(serializer.validated_data)
+        mime_type = self._generate_mime_type(serializer.validated_data['file_format'])
+        file_format=serializer.validated_data['file_format'],
+
+        # 파일 형식이 YAML인 경우 YAML로 변환
+        if file_format in ['yaml', 'yml']:
+            content = ai_service.generate_content(prompt, file_format='yaml')
+            mime_type = 'application/x-yaml'
+        else:
+            # 그 외 형식은 기본 JSON으로 처리
+            content_data = ai_service.generate_content(prompt)
+            content = json.dumps(content_data, indent=2)
+            mime_type = 'application/json'
+
         # 생성된 설정 파일 저장
         config = GeneratedConfig.objects.create(
             language=serializer.validated_data['language'],
             framework=serializer.validated_data['framework'],
-            features=serializer.validated_data['features'],
+            selected_options=serializer.validated_data['selected_options'],
             file_format=serializer.validated_data['file_format'],
-            content=generated_content,
+            filename=filename,
+            mime_type=mime_type,
+            content=content,
             title=serializer.validated_data.get('title', '')
         )
         
-        # 파일명 및 MIME 타입 생성
-        filename = self._generate_filename(serializer.validated_data)
-        mime_type = self._generate_mime_type(serializer.validated_data['file_format'])
-        
         return Response({
             'id': config.id,
-            'content': generated_content,
+            'content': content,
+            'language': serializer.validated_data['language'],
+            'framework': serializer.validated_data['framework'],
+            'selected_options': serializer.validated_data['selected_options'],
+            'file_format': serializer.validated_data['file_format'],
             'filename': filename,
             'mime_type': mime_type,
             'title': config.title if config.title else None,
