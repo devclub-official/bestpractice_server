@@ -17,7 +17,8 @@ class PromptGeneratorService:
         selected_options = data['selected_options']
         
         prompt = f"""당신은 초보 개발자를 돕는 도우미입니다. 
-            다음 조건에 맞는 설정 파일 전체를 생성해주세요:
+            아래의 설정 파일을 생성해주세요.
+            아래의 조건을 모두 만족해야 합니다.
 
             프로그래밍 언어: {language}
             프레임워크: {framework}
@@ -29,7 +30,7 @@ class PromptGeneratorService:
             prompt += f"- {option}: {value}\n"
             
         prompt += f"\n파일 형식: {file_format}\n\n"
-        # prompt += "각 설정에 대한 주석을 추가하여 초보 개발자가 이해하기 쉽게 만들어주세요. 코드만 반환하고 설명은 주석으로 처리해주세요."
+        prompt += "위 조건에 맞는 설정 파일 전체를 생성해주세요:"
 
         return prompt
 
